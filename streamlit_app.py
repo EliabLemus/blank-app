@@ -53,7 +53,7 @@ def concreto_to_materiales(m3: float, receta: dict):
     return cemento_bolsas, arena_m3, piedrin_m3, agua_l, acero_kg
 
 # -------- UI --------
-st.markdown("### 🏗️ Calculadora de Materiales (Simple)")
+st.markdown("### 🏗️ Calculadora de Materiales")
 st.caption("Ingresa 3 datos. Obtén cantidades estimadas en unidades comunes en Guatemala (bolsas, m³, kg, L).")
 
 col1, col2, col3 = st.columns(3)
