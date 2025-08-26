@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 # -------- Config --------
-st.set_page_config(page_title="Calculadora de Materiales (Simple)", page_icon="🏗️", layout="centered")
+st.set_page_config(page_title="Calculadora de Materiales", page_icon="🏗️", layout="centered")
 BOLSA_CEMENTO_KG = 42.5
 
 # Coeficientes demo (ajustables más adelante)
@@ -61,7 +61,25 @@ depto = col1.selectbox("Departamento", list(K_FACTOR.keys()), index=0)
 niveles = col2.selectbox("Niveles", [1, 2, 3], index=1)
 area_m2_total = col3.number_input("Área (m²)", min_value=20.0, max_value=1000.0, value=120.0, step=5.0)
 
-calcular = st.button("Calcular ✅", type="primary", use_container_width=True)
+# Aberturas (opcional)
+st.markdown("#### Aberturas (opcional)")
+colA, colB, colC = st.columns(3)
+incluir_aberturas = colA.checkbox("Incluir puertas y ventanas", value=False)
+if incluir_aberturas:
+    n_habitaciones = colB.number_input("Habitaciones", min_value=0, max_value=20, value=3, step=1)
+    n_banos = colC.number_input("Baños", min_value=0, max_value=20, value=2, step=1)
+    c1, c2 = st.columns(2)
+    with c1:
+        metodo_aberturas = st.radio("Cálculo de ventanas", ["Por m² (factor)", "Por cuartos"], index=0, horizontal=True)
+    with c2:
+        factor_ventanas_por_m2 = st.number_input("Factor ventanas por m²", min_value=0.00, max_value=0.20, value=0.06, step=0.01, format="%.2f")
+else:
+    n_habitaciones = 0
+    n_banos = 0
+    metodo_aberturas = "Por m² (factor)"
+    factor_ventanas_por_m2 = 0.06
+
+calcular = st.button("Calcular ✅", use_container_width=True)
 st.markdown("---")
 
 if calcular:
@@ -89,6 +107,17 @@ if calcular:
     mortero_cem_bolsas = (MAMPOSTERIA["mortero_cemento_kg_por_m2"] * muro_m2) / BOLSA_CEMENTO_KG
     mortero_arena_m3 = MAMPOSTERIA["mortero_arena_m3_por_m2"] * muro_m2
 
+    # Puertas y Ventanas (conteo simple)
+    if incluir_aberturas:
+        puertas_pzas = int(n_habitaciones + n_banos + 1)  # +1 entrada
+        if metodo_aberturas == "Por m² (factor)":
+            ventanas_pzas = int(round(area_m2_total * factor_ventanas_por_m2))
+        else:
+            ventanas_pzas = int(n_habitaciones + n_banos)  # aprox: una por cuarto/baño
+    else:
+        puertas_pzas = 0
+        ventanas_pzas = 0
+
     # Totales
     total_cemento_bolsas = sum([losa_cem, cont_cem, cim_cem, cv_cem, mortero_cem_bolsas])
     total_arena_m3 = sum([losa_ar, cont_ar, cim_ar, cv_ar, mortero_arena_m3])
@@ -109,6 +138,9 @@ if calcular:
         st.metric("Acero", f"{total_acero_kg:,.0f} kg")
         st.metric("Agua", f"{total_agua_l:,.0f} L")
 
+    if incluir_aberturas and (puertas_pzas or ventanas_pzas):
+        st.markdown(f"**Aberturas estimadas:** Puertas: {puertas_pzas} pzas · Ventanas: {ventanas_pzas} pzas")
+
     st.caption("Valores de demostración. 'Piedrín' y 'Grava' se usan como sinónimos.")
 
     # Desglose compacto + descarga CSV
@@ -123,8 +155,13 @@ if calcular:
             {"Actividad / Elemento (Partida)": "Cimientos corridos", "Unidad": "m³", "Cantidad": f"{cimientos_m3:,.2f}",
              "Materiales principales": f"Cemento {cim_cem:,.1f} bolsas, Arena {cim_ar:,.2f} m³, Piedrín {cim_pi:,.2f} m³, Acero {cim_ac:,.0f} kg"},
             {"Actividad / Elemento (Partida)": "Columnas + Vigas", "Unidad": "m³", "Cantidad": f"{colviga_m3:,.2f}",
-             "Materiales principales": f"Cemento {cv_cem:,.1f} bolsas, Arena {cv_ar:,.2f} m³, Piedrín {cv_pi:,.2f} m³, Acero {cv_ac:,.0f} kg"},
+             "Materiales principales": f"Cemento {cv_cem:,.1f} bolsas, Arena {cv_ar:,.2f} m³, Piedrín {cv_pi:,.2f} m³, Acero {cv_ac:,.0f} kg"}
         ]
+
+        if incluir_aberturas:
+            tabla.append({"Actividad / Elemento (Partida)": "Puertas (conteo)", "Unidad": "pza", "Cantidad": f"{puertas_pzas:d}", "Materiales principales": "Carpintería/metal según catálogo (no desglosado en demo)"})
+            tabla.append({"Actividad / Elemento (Partida)": "Ventanas (conteo)", "Unidad": "pza", "Cantidad": f"{ventanas_pzas:d}", "Materiales principales": "Vidrio/Aluminio según catálogo (no desglosado en demo)"})
+
         df_tabla = pd.DataFrame(tabla)
         st.dataframe(df_tabla, use_container_width=True)
 
@@ -132,5 +169,16 @@ if calcular:
         df_tabla.to_csv(csv_buffer, index=False)
         st.download_button("Descargar desglose (CSV)", data=csv_buffer.getvalue(), file_name="desglose_materiales_demo_simple.csv", mime="text/csv", use_container_width=True)
 
+st.markdown(
+    """
+    <style>
+    div.stButton > button:first-child {
+        background-color: #1E88E5;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 st.markdown("---")
 st.caption("Prototipo mínimo. Luego conectamos tus coeficientes reales y precios por departamento.")
