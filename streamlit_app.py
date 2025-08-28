@@ -165,4 +165,11 @@ if st.button("Calcular ✅", use_container_width=True):
     csv = io.StringIO()
     df.to_csv(csv, index=False)
     st.download_button("📥 Descargar comparación CSV", csv.getvalue(), "comparacion_construcciones.csv", "text/csv")
+    # ------------------ Disclaimer ------------------
+    st.markdown("---")
+    st.warning(
+        "⚠️ Este prototipo es funcional pero contiene cálculos **no validados** y puede tener errores. "
+        "Su propósito es únicamente evaluar la **usabilidad y experiencia de usuario** del producto. "
+        "Los datos aquí presentados **no deben usarse para estimaciones reales de construcción.**"
+    )
 
